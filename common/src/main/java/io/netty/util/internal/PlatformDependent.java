@@ -87,7 +87,9 @@ public final class PlatformDependent {
     private static final boolean DIRECT_BUFFER_PREFERRED =
             HAS_UNSAFE && !SystemPropertyUtil.getBoolean("io.netty.noPreferDirect", false);
     private static final long MAX_DIRECT_MEMORY = maxDirectMemory0();
-    private static final int MAX_MPSC_CAPACITY =  1024 * 1024; // TODO: Maybe make this configurable ?
+    private static final int MPSC_CHUNK_SIZE =  1024;
+    private static final int MIN_MAX_MPSC_CAPACITY =  MPSC_CHUNK_SIZE * 2;
+    private static final int DEFAULT_MAX_MPSC_CAPACITY =  MPSC_CHUNK_SIZE * MPSC_CHUNK_SIZE;
 
     private static final long BYTE_ARRAY_BASE_OFFSET = PlatformDependent0.byteArrayBaseOffset();
 
@@ -727,8 +729,16 @@ public final class PlatformDependent {
      * consumer (one thread!).
      */
     public static <T> Queue<T> newMpscQueue() {
-        return hasUnsafe() ? new MpscChunkedArrayQueue<T>(1024, MAX_MPSC_CAPACITY, true)
-                : new MpscLinkedAtomicQueue<T>();
+        return newMpscQueue(DEFAULT_MAX_MPSC_CAPACITY);
+    }
+
+    /**
+     * Create a new {@link Queue} which is safe to use for multiple producers (different threads) and a single
+     * consumer (one thread!).
+     */
+    public static <T> Queue<T> newMpscQueue(int maxCapacity) {
+        return hasUnsafe() ? new MpscChunkedArrayQueue<T>(MPSC_CHUNK_SIZE,
+                Math.max(maxCapacity, MIN_MAX_MPSC_CAPACITY), true) : new MpscLinkedAtomicQueue<T>();
     }
 
     /**
